@@ -137,7 +137,7 @@ elif [ -f "./gcli2api/web.py" ]; then
     cd ./gcli2api
 else
     echo "克隆项目仓库..."
-    git clone https://github.com/su-kaka/gcli2api.git
+    git clone https://github.com/dascard/gcli2api.git
     cd ./gcli2api
 fi
 

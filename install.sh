@@ -243,7 +243,7 @@ else
         rm -rf ./gcli2api
     fi
     
-    if ! git clone https://github.com/su-kaka/gcli2api.git; then
+    if ! git clone https://github.com/dascard/gcli2api.git; then
         log_error "Failed to clone repository"
         exit 1
     fi

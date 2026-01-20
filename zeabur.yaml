@@ -31,7 +31,7 @@ spec:
         id: gcli2api
         name: gcli2api
         source:
-          image: ghcr.io/su-kaka/gcli2api:latest
+          image: ghcr.io/dascard/gcli2api:latest
         ports:
           - id: web
             port: 7861
