@@ -44,6 +44,7 @@ ENV_MAPPINGS = {
     "API_PASSWORD": "api_password",
     "PANEL_PASSWORD": "panel_password",
     "PASSWORD": "password",
+    "API_KEYS": "api_keys",
 }
 
 
@@ -270,6 +271,38 @@ async def get_server_password() -> str:
     Default: pwd
     """
     return str(await get_config_value("password", "pwd", "PASSWORD"))
+
+
+async def get_api_keys() -> list[str]:
+    """
+    Get allowed API keys list.
+    
+    Includes:
+    1. Keys from API_KEYS env/config (list/comma-separated)
+    2. Single key from API_PASSWORD/PASSWORD (for compatibility)
+    """
+    keys = set()
+    
+    # 1. Add single password (compatibility)
+    api_pwd = await get_api_password()
+    if api_pwd:
+        keys.add(api_pwd)
+        
+    # 2. Add keys from configuration
+    config_keys = await get_config_value("api_keys", [], "API_KEYS")
+    
+    if isinstance(config_keys, str):
+        # Handle comma-separated string from env var
+        for k in config_keys.split(","):
+            if k.strip():
+                keys.add(k.strip())
+    elif isinstance(config_keys, list):
+        # Handle list from JSON config
+        for k in config_keys:
+            if isinstance(k, str) and k.strip():
+                keys.add(k.strip())
+                
+    return list(keys)
 
 
 async def get_credentials_dir() -> str:

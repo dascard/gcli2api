@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from config import get_api_password, get_panel_password
+from config import get_api_password, get_panel_password, get_api_keys
 from fastapi import Depends, HTTPException, Header, Query, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from log import log
@@ -65,6 +65,20 @@ BASE_MODELS = [
     "gemini-3-flash-preview"
 ]
 
+# Codex Models Configuration (Moved from router/codex/openai.py)
+CODEX_MODELS_LIST = [
+    # GPT-5 Series
+    {"id": "gpt-5", "object": "model", "owned_by": "openai", "name": "GPT 5"},
+    {"id": "gpt-5-codex", "object": "model", "owned_by": "openai", "name": "GPT 5 Codex"},
+    {"id": "gpt-5-codex-mini", "object": "model", "owned_by": "openai", "name": "GPT 5 Codex Mini"},
+    {"id": "gpt-5.1", "object": "model", "owned_by": "openai", "name": "GPT 5.1"},
+    {"id": "gpt-5.1-codex", "object": "model", "owned_by": "openai", "name": "GPT 5.1 Codex"},
+    {"id": "gpt-5.1-codex-mini", "object": "model", "owned_by": "openai", "name": "GPT 5.1 Codex Mini"},
+    {"id": "gpt-5.1-codex-max", "object": "model", "owned_by": "openai", "name": "GPT 5.1 Codex Max"},
+    {"id": "gpt-5.2", "object": "model", "owned_by": "openai", "name": "GPT 5.2"},
+    {"id": "gpt-5.2-codex", "object": "model", "owned_by": "openai", "name": "GPT 5.2 Codex"},
+]
+
 
 # ====================== Model Helper Functions ======================
 
@@ -99,15 +113,17 @@ def get_available_models(router_type: str = "openai") -> List[str]:
     """
     models = []
 
-    for base_model in BASE_MODELS:
-        # 基础模型
-        models.append(base_model)
+    # 仅在 gemini 或 openai 模式下添加 Gemini 基础模型
+    if router_type in ["gemini", "openai"]:
+        for base_model in BASE_MODELS:
+            # 基础模型
+            models.append(base_model)
 
-        # 假流式模型 (前缀格式)
-        models.append(f"假流式/{base_model}")
+            # 假流式模型 (前缀格式)
+            models.append(f"假流式/{base_model}")
 
-        # 流式抗截断模型 (仅在流式传输时有效，前缀格式)
-        models.append(f"流式抗截断/{base_model}")
+            # 流式抗截断模型 (仅在流式传输时有效，前缀格式)
+            models.append(f"流式抗截断/{base_model}")
 
         # 定义思考后缀（根据模型系列不同）
         thinking_suffixes = []
@@ -126,23 +142,34 @@ def get_available_models(router_type: str = "openai") -> List[str]:
 
         search_suffix = "-search"
 
-        # 1. 单独的 thinking 后缀
-        for thinking_suffix in thinking_suffixes:
-            models.append(f"{base_model}{thinking_suffix}")
-            models.append(f"假流式/{base_model}{thinking_suffix}")
-            models.append(f"流式抗截断/{base_model}{thinking_suffix}")
+            # 1. 单独的 thinking 后缀
+            for thinking_suffix in thinking_suffixes:
+                models.append(f"{base_model}{thinking_suffix}")
+                models.append(f"假流式/{base_model}{thinking_suffix}")
+                models.append(f"流式抗截断/{base_model}{thinking_suffix}")
 
-        # 2. 单独的 search 后缀
-        models.append(f"{base_model}{search_suffix}")
-        models.append(f"假流式/{base_model}{search_suffix}")
-        models.append(f"流式抗截断/{base_model}{search_suffix}")
+            # 2. 单独的 search 后缀
+            models.append(f"{base_model}{search_suffix}")
+            models.append(f"假流式/{base_model}{search_suffix}")
+            models.append(f"流式抗截断/{base_model}{search_suffix}")
 
-        # 3. thinking + search 组合后缀
-        for thinking_suffix in thinking_suffixes:
-            combined_suffix = f"{thinking_suffix}{search_suffix}"
-            models.append(f"{base_model}{combined_suffix}")
-            models.append(f"假流式/{base_model}{combined_suffix}")
-            models.append(f"流式抗截断/{base_model}{combined_suffix}")
+            # 3. thinking + search 组合后缀
+            for thinking_suffix in thinking_suffixes:
+                combined_suffix = f"{thinking_suffix}{search_suffix}"
+                models.append(f"{base_model}{combined_suffix}")
+                models.append(f"假流式/{base_model}{combined_suffix}")
+                models.append(f"流式抗截断/{base_model}{combined_suffix}")
+
+    # 对于 openai 或 codex 模式，添加 Codex 模型
+    if router_type in ["openai", "codex"]:
+        for codex_model in CODEX_MODELS_LIST:
+            base_id = codex_model["id"]
+            # 1. 基础模型
+            models.append(base_id)
+            # 2. 假流式
+            models.append(f"假流式/{base_id}")
+            # 3. 流式抗截断
+            models.append(f"流式抗截断/{base_id}")
 
     return models
 
@@ -195,7 +222,7 @@ async def authenticate_flexible(
             # token 已验证通过
             pass
     """
-    password = await get_api_password()
+    # password = await get_api_password() # Use get_api_keys() instead
     token = None
     auth_method = None
 
@@ -249,7 +276,9 @@ async def authenticate_flexible(
         )
     
     # 验证 token
-    if token != password:
+    # 支持多密码验证
+    valid_keys = await get_api_keys()
+    if token not in valid_keys:
         log.debug(f"Authentication failed using {auth_method}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

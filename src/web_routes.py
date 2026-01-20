@@ -36,15 +36,22 @@ from src.auth import (
     get_auth_status,
     verify_password,
 )
-from src.credential_manager import credential_manager
-from .models import (
-    LoginRequest,
+from src.credential_manager import CredentialManager
+from src.models import (
+    AuthRequest,
+    AuthResponse,
     AuthStartRequest,
     AuthCallbackRequest,
     AuthCallbackUrlRequest,
+    ConfigSaveRequest,
+    ConfigValue,
+    CredentialInfo,
     CredFileActionRequest,
     CredFileBatchActionRequest,
-    ConfigSaveRequest,
+    LogEntry,
+    LoginRequest,
+    SystemStatus,
+    ApiKeyActionRequest,
 )
 from src.storage_adapter import get_storage_adapter
 from src.utils import verify_panel_token, GEMINICLI_USER_AGENT, ANTIGRAVITY_USER_AGENT
@@ -370,7 +377,7 @@ def validate_mode(mode: str = "geminicli") -> str:
     验证 mode 参数
 
     Args:
-        mode: 模式字符串 ("geminicli" 或 "antigravity")
+        mode: 模式字符串 ("geminicli", "antigravity" 或 "codex")
 
     Returns:
         str: 验证后的 mode 字符串
@@ -378,10 +385,10 @@ def validate_mode(mode: str = "geminicli") -> str:
     Raises:
         HTTPException: 如果 mode 参数无效
     """
-    if mode not in ["geminicli", "antigravity"]:
+    if mode not in ["geminicli", "antigravity", "codex"]:
         raise HTTPException(
             status_code=400,
-            detail=f"无效的 mode 参数: {mode}，只支持 'geminicli' 或 'antigravity'"
+            detail=f"无效的 mode 参数: {mode}，只支持 'geminicli', 'antigravity' 或 'codex'"
         )
     return mode
 
@@ -1493,6 +1500,106 @@ async def save_config(request: ConfigSaveRequest, token: str = Depends(verify_pa
 
 
 # =============================================================================
+# API Key Management
+# =============================================================================
+
+
+@router.get("/config/apikeys")
+async def get_config_apikeys(token: str = Depends(verify_panel_token)):
+    """获取API Keys列表"""
+    try:
+        from config import get_api_keys
+        
+        # 获取所有有效 key
+        keys = await get_api_keys()
+        
+        # 还要获取存储在 config 中的原始列表，以便区分哪些是 config 中的，哪些是 env/legacy
+        storage_adapter = await get_storage_adapter()
+        stored_keys = await storage_adapter.get_config("api_keys", [])
+        
+        return JSONResponse(content={
+            "success": True,
+            "keys": keys,
+            "stored_keys": stored_keys
+        })
+    except Exception as e:
+        log.error(f"获取API密钥失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/config/apikeys/action")
+async def manage_apikeys(
+    request: ApiKeyActionRequest,
+    token: str = Depends(verify_panel_token)
+):
+    """管理API密钥 (add, delete, generate)"""
+    try:
+        from config import reload_config
+        import secrets
+        import string
+
+        storage_adapter = await get_storage_adapter()
+        stored_keys = await storage_adapter.get_config("api_keys", [])
+        if not isinstance(stored_keys, list):
+            stored_keys = []
+            
+        action = request.action
+        key = request.key
+        
+        message = ""
+        new_key = None
+        
+        if action == "generate":
+            # 生成新的复杂 key
+            alphabet = string.ascii_letters + string.digits
+            new_key = "sk-gcli-" + ''.join(secrets.choice(alphabet) for i in range(48))
+            stored_keys.append(new_key)
+            message = "成功生成并添加新的API Key"
+            
+        elif action == "add":
+            if not key:
+                raise HTTPException(status_code=400, detail="Key cannot be empty")
+            if key in stored_keys:
+                raise HTTPException(status_code=400, detail="Key already exists")
+            stored_keys.append(key)
+            new_key = key
+            message = "成功添加API Key"
+            
+        elif action == "delete":
+            if not key:
+                raise HTTPException(status_code=400, detail="Key cannot be empty")
+            if key in stored_keys:
+                stored_keys.remove(key)
+                message = "成功删除API Key"
+            else:
+                 # Check if it's an env var key or legacy key (cannot delete from partial list)
+                 # just update storage anyway
+                 pass
+                 
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+            
+        # 保存回存储
+        await storage_adapter.set_config("api_keys", stored_keys)
+        
+        # Reload config to apply changes
+        await reload_config()
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": message,
+            "key": new_key,
+            "api_keys": stored_keys
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error(f"管理API密钥失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
 # 实时日志WebSocket (Real-time Logs WebSocket)
 # =============================================================================
 
@@ -1960,5 +2067,144 @@ async def get_version_info(check_update: bool = False):
         })
 
 
+# =============================================================================
+# Codex OAuth 认证和凭证管理端点
+# =============================================================================
 
 
+@router.post("/auth/codex/start")
+async def start_codex_auth(token: str = Depends(verify_panel_token)):
+    """开始 Codex OAuth 认证流程"""
+    try:
+        from src.codex_oauth import create_codex_auth_flow
+
+        flow_data = create_codex_auth_flow()
+
+        return JSONResponse(content={
+            "success": True,
+            "auth_url": flow_data["auth_url"],
+            "state": flow_data["state"],
+            "message": "请在浏览器中打开授权链接完成 ChatGPT 登录"
+        })
+
+    except Exception as e:
+        log.error(f"开始 Codex 认证流程失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/auth/codex/callback")
+async def codex_auth_callback(
+    request: Request,
+    token: str = Depends(verify_panel_token)
+):
+    """处理 Codex OAuth 回调"""
+    try:
+        body = await request.json()
+        state = body.get("state")
+        code = body.get("code")
+
+        if not state or not code:
+            raise HTTPException(status_code=400, detail="缺少 state 或 code 参数")
+
+        from src.codex_oauth import complete_codex_auth_flow
+
+        credentials = await complete_codex_auth_flow(state, code)
+
+        if not credentials:
+            raise HTTPException(status_code=400, detail="认证失败，请重试")
+
+        # 生成凭证文件名
+        email = credentials.email or "unknown"
+        filename = f"codex_{email.replace('@', '_at_').replace('.', '_')}.json"
+
+        # 保存凭证
+        await credential_manager.add_codex_credential(filename, credentials.to_dict())
+
+        return JSONResponse(content={
+            "success": True,
+            "message": "Codex 认证成功",
+            "email": credentials.email,
+            "account_id": credentials.account_id,
+            "filename": filename
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error(f"处理 Codex 认证回调失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/creds/codex/status")
+async def get_codex_creds_status(
+    offset: int = 0,
+    limit: int = 20,
+    status_filter: str = "all",
+    token: str = Depends(verify_panel_token)
+):
+    """获取 Codex 凭证状态列表"""
+    return await get_creds_status_common(
+        offset=offset,
+        limit=limit,
+        status_filter=status_filter,
+        mode="codex"
+    )
+
+
+@router.post("/creds/codex/action")
+async def codex_cred_action(
+    request: CredFileActionRequest,
+    token: str = Depends(verify_panel_token)
+):
+    """执行 Codex 凭证操作（启用/禁用/删除）"""
+    try:
+        filename = request.filename
+        action = request.action
+
+        if not filename:
+            raise HTTPException(status_code=400, detail="文件名不能为空")
+
+        if action == "enable":
+            success = await credential_manager.set_cred_disabled(filename, False, mode="codex")
+            if success:
+                return JSONResponse(content={"message": f"已启用凭证: {filename}"})
+            else:
+                raise HTTPException(status_code=500, detail="启用凭证失败")
+
+        elif action == "disable":
+            success = await credential_manager.set_cred_disabled(filename, True, mode="codex")
+            if success:
+                return JSONResponse(content={"message": f"已禁用凭证: {filename}"})
+            else:
+                raise HTTPException(status_code=500, detail="禁用凭证失败")
+
+        elif action == "delete":
+            success = await credential_manager.remove_credential(filename, mode="codex")
+            if success:
+                return JSONResponse(content={"message": f"已删除凭证: {filename}"})
+            else:
+                raise HTTPException(status_code=500, detail="删除凭证失败")
+
+        else:
+            raise HTTPException(status_code=400, detail=f"不支持的操作: {action}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error(f"Codex 凭证操作失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/creds/codex/upload")
+async def upload_codex_creds(
+    files: List[UploadFile] = File(...),
+    token: str = Depends(verify_panel_token)
+):
+    """上传 Codex 凭证文件（JSON 格式）"""
+    return await upload_credentials_common(files, mode="codex")
+
+
+@router.get("/creds/codex/download-all")
+async def download_all_codex_creds(token: str = Depends(verify_panel_token)):
+    """打包下载所有 Codex 凭证"""
+    return await download_all_creds_common(mode="codex")

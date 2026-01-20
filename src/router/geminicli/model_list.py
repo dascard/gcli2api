@@ -58,6 +58,7 @@ async def list_openai_models(token: str = Depends(authenticate_flexible)):
     使用 create_openai_model_list 工具函数创建标准格式
     """
     models = get_available_models("gemini")
+    
     log.info("[GEMINICLI MODEL LIST] 返回 OpenAI 格式")
     model_list = create_openai_model_list(models, owned_by="google")
     return JSONResponse(content={

@@ -116,6 +116,16 @@ class CredentialManager:
         await self._storage_adapter.store_credential(credential_name, credential_data, mode="antigravity")
         log.info(f"Antigravity credential added/updated: {credential_name}")
 
+    async def add_codex_credential(self, credential_name: str, credential_data: Dict[str, Any]):
+        """
+        新增或更新一个Codex凭证
+        存储层会自动处理轮换顺序
+        """
+        await self._ensure_initialized()
+        async with self._operation_lock:
+            await self._storage_adapter.store_credential(credential_name, credential_data, mode="codex")
+            log.info(f"Codex credential added/updated: {credential_name}")
+
     async def remove_credential(self, credential_name: str, mode: str = "geminicli") -> bool:
         """删除一个凭证"""
         await self._ensure_initialized()
@@ -386,6 +396,11 @@ class CredentialManager:
         """刷新token并更新存储"""
         await self._ensure_initialized()
         try:
+            # Codex 模式使用 OpenAI OAuth 刷新
+            if mode == "codex":
+                return await self._refresh_codex_token(credential_data, filename)
+
+            # Geminicli / Antigravity 使用 Google OAuth 刷新
             # 创建Credentials对象
             creds = Credentials.from_dict(credential_data)
 
@@ -453,6 +468,39 @@ class CredentialManager:
                 # 网络错误或其他临时性错误，不封禁凭证
                 log.warning(f"Token刷新失败但非永久性错误 (HTTP {status_code})，不封禁凭证: {filename}")
 
+            return None
+
+    async def _refresh_codex_token(
+        self, credential_data: Dict[str, Any], filename: str
+    ) -> Optional[Dict[str, Any]]:
+        """刷新 Codex (OpenAI) 令牌"""
+        from src.codex_oauth import CodexCredentials, CodexOAuth
+
+        refresh_token = credential_data.get("refresh_token")
+        if not refresh_token:
+            log.error(f"Codex 凭证没有 refresh_token: {filename}")
+            await self.update_credential_state(filename, {"disabled": True}, mode="codex")
+            return None
+
+        try:
+            oauth = CodexOAuth()
+            new_creds = await oauth.refresh_tokens(refresh_token)
+            await oauth.close()
+
+            if new_creds:
+                new_data = new_creds.to_dict()
+                await self._storage_adapter.store_credential(filename, new_data, mode="codex")
+                log.info(f"Codex Token 刷新成功: {filename}")
+                return new_data
+            else:
+                log.error(f"Codex Token 刷新返回空: {filename}")
+                return None
+
+        except Exception as e:
+            log.error(f"Codex Token 刷新失败 {filename}: {e}")
+            # 禁用失效凭证
+            await self.record_api_call_result(filename, False, 400, mode="codex")
+            await self.update_credential_state(filename, {"disabled": True}, mode="codex")
             return None
 
     def _is_permanent_refresh_failure(self, error_msg: str, status_code: Optional[int] = None) -> bool:

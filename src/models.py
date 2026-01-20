@@ -377,3 +377,10 @@ class CredFileBatchActionRequest(BaseModel):
 
 class ConfigSaveRequest(BaseModel):
     config: dict
+
+
+class ApiKeyActionRequest(BaseModel):
+    key: Optional[str] = None
+    action: str  # add, delete, generate
+    note: Optional[str] = None  # Optional note for the key
+

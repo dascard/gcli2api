@@ -253,10 +253,10 @@ fi
 
 # Update repository if it's a git repo
 if [ -d ".git" ]; then
-    log_info "Updating repository..."
-    if ! git pull; then
-        log_warn "Git pull failed, continuing anyway..."
-    fi
+    log_info "Updating repository (Skipped to preserve local changes)..."
+    # if ! git pull; then
+    #     log_warn "Git pull failed, continuing anyway..."
+    # fi
 else
     log_warn "Not a git repository, skipping update"
 fi

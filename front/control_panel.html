@@ -6,601 +6,384 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GCLI2API 控制面板</title>
     <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-            max-width: 1000px;
-            margin: 0 auto;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.5;
+            margin: 0;
             padding: 20px;
-            background-color: #f8f9fa;
+            -webkit-font-smoothing: antialiased;
         }
 
         .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            box-sizing: border-box;
-            overflow-x: auto;
+            max-width: 1100px;
+            margin: 0 auto;
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: #111827;
+            font-weight: 700;
+            letter-spacing: -0.025em;
         }
 
         h1 {
-            color: #333;
+            margin-bottom: 2rem;
             text-align: center;
+            font-size: 1.875rem;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        h4 {
+            font-size: 1.125rem;
+            color: #374151;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 1.5rem;
         }
 
         label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
         }
 
-        input[type="text"] {
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        select,
+        textarea {
             width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background-color: #fff;
             box-sizing: border-box;
         }
 
-        input[type="text"]:focus {
-            border-color: #4285f4;
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--primary-color);
             outline: none;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
         .btn {
-            background-color: #4285f4;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
             color: white;
-            padding: 12px 30px;
             border: none;
-            border-radius: 5px;
-            font-size: 16px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.95rem;
             cursor: pointer;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-
-        .btn:hover {
-            background-color: #3367d6;
-        }
-
-        .btn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-
-        .auth-url {
-            background-color: #f8f9fa;
-            border: 1px solid #e1e4e8;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 20px 0;
-            word-break: break-all;
-        }
-
-        .auth-url a {
-            color: #4285f4;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
             text-decoration: none;
         }
 
-        .auth-url a:hover {
-            text-decoration: underline;
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
         }
 
-        .credentials {
-            background-color: #f0f8ff;
-            border: 1px solid #b0d4ff;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 20px 0;
-            font-family: monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 400px;
-            overflow-y: auto;
+        .btn:active {
+            transform: translateY(0);
         }
 
-        /* Toast 固定定位在右上角 */
-        #statusSection {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            left: auto;
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
             transform: none;
-            z-index: 9999;
-            width: auto;
-            max-width: 400px;
-            min-width: 250px;
-        }
-
-        /* Toast 专用样式 - 只在 #statusSection 内生效 */
-        #statusSection .status {
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin: 0;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            opacity: 0;
-            transform: translateX(100%);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        #statusSection .status.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        #statusSection .status.fade-out {
-            opacity: 0;
-            transform: translateX(100%);
-        }
-
-        #statusSection .status.success {
-            background-color: #28a745;
-            border: none;
-            color: white;
-        }
-
-        #statusSection .status.error {
-            background-color: #dc3545;
-            border: none;
-            color: white;
-        }
-
-        #statusSection .status.warning {
-            background-color: #ffc107;
-            border: none;
-            color: #212529;
-        }
-
-        #statusSection .status.info {
-            background-color: #17a2b8;
-            border: none;
-            color: white;
-        }
-
-        /* 页面内嵌的 status 样式 - 保持原有风格 */
-        .status {
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-
-        .status.success {
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
-
-        .status.error {
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-        }
-
-        .status.info {
-            background-color: #d1ecf1;
-            border: 1px solid #bee5eb;
-            color: #0c5460;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .loading {
-            text-align: center;
-            color: #666;
-        }
-
-        .login-form {
-            text-align: center;
-            padding: 50px 0;
-        }
-
-        .login-form input[type="password"] {
-            width: 300px;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
+            box-shadow: none;
         }
 
         .tabs {
-            display: inline-flex;
-            background: linear-gradient(145deg, #f5f5f7, #e8e8ed);
-            padding: 6px;
-            border-radius: 14px;
-            margin-bottom: 25px;
-            border-bottom: none;
-            gap: 3px;
+            display: flex;
+            background: #f1f5f9;
+            padding: 0.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            gap: 0.25rem;
             overflow-x: auto;
-            max-width: 100%;
-            user-select: none;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06),
-                0 1px 2px rgba(255, 255, 255, 0.9);
             position: relative;
-        }
-
-        /* 滑块指示器 */
-        .tab-slider {
-            position: absolute;
-            top: 6px;
-            left: 0;
-            right: 0;
-            height: calc(100% - 12px);
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1),
-                0 1px 3px rgba(0, 0, 0, 0.06),
-                inset 0 -1px 0 rgba(0, 0, 0, 0.02);
-            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        /* 滑块微光效果 */
-        .tab-slider::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 50%;
-            background: linear-gradient(180deg,
-                    rgba(255, 255, 255, 0.8) 0%,
-                    rgba(255, 255, 255, 0) 100%);
-            border-radius: 10px 10px 0 0;
-            pointer-events: none;
-            opacity: 0.5;
-        }
-
-        .tabs::-webkit-scrollbar {
-            height: 4px;
-        }
-
-        .tabs::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .tabs::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.15);
-            border-radius: 2px;
-        }
-
-        .tabs::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.25);
         }
 
         .tab {
-            padding: 10px 18px;
-            cursor: pointer;
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem 1rem;
             border: none;
             background: transparent;
-            border-radius: 10px;
-            color: #666;
-            font-size: 14px;
-            font-weight: 450;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
             white-space: nowrap;
-            position: relative;
-            overflow: hidden;
             z-index: 1;
         }
 
-        /* 点击波纹效果 */
-        .tab::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(66, 133, 244, 0.15);
-            transform: translate(-50%, -50%);
-            transition: width 0.4s ease, height 0.4s ease;
-            z-index: -1;
-        }
-
-        .tab:active::before {
-            width: 200%;
-            height: 200%;
+        .tab:hover {
+            color: #1e293b;
+            background: rgba(255, 255, 255, 0.5);
         }
 
         .tab.active {
-            color: #1a1a1a;
-            font-weight: 550;
-            transform: translateY(0);
-            /* 背景和阴影由滑块提供 */
-        }
-
-        .tab:hover:not(.active) {
-            background: rgba(255, 255, 255, 0.6);
-            color: #333;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-        }
-
-        /* 按压效果 */
-        .tab:active {
-            transform: scale(0.97) translateY(0);
-            transition: transform 0.1s ease;
-        }
-
-        .tab.active:active {
-            transform: scale(0.98);
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08),
-                inset 0 1px 2px rgba(0, 0, 0, 0.02);
-        }
-
-        /* 焦点状态（键盘导航） */
-        .tab:focus {
-            outline: none;
-        }
-
-        .tab:focus-visible {
-            outline: 2px solid rgba(66, 133, 244, 0.5);
-            outline-offset: 2px;
+            background: white;
+            color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
         }
 
         .tab-content {
             display: none;
-            width: 100%;
-            box-sizing: border-box;
-            /* 动画由 JavaScript 控制，避免冲突 */
+            animation: fadeIn 0.3s ease-out;
         }
 
         .tab-content.active {
             display: block;
         }
 
-        .upload-area {
-            border: 2px dashed #ddd;
-            border-radius: 5px;
-            padding: 40px;
-            text-align: center;
-            background-color: #fafafa;
-            margin: 20px 0;
-            cursor: pointer;
-            transition: border-color 0.3s;
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .upload-area:hover {
-            border-color: #4285f4;
-        }
-
-        .upload-area.dragover {
-            border-color: #4285f4;
-            background-color: #f0f8ff;
-        }
-
-        .file-list {
-            margin: 20px 0;
-        }
-
-        .file-item {
-            background-color: #f8f9fa;
-            border: 1px solid #e1e4e8;
-            border-radius: 3px;
-            padding: 10px;
-            margin: 5px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .file-item .file-name {
-            font-family: monospace;
-            color: #333;
-        }
-
-        .file-item .file-size {
-            color: #666;
-            font-size: 12px;
-        }
-
-        .file-item .remove-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 2px 8px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .upload-progress {
-            background-color: #f8f9fa;
-            border: 1px solid #e1e4e8;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #e9ecef;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background-color: #28a745;
-            transition: width 0.3s ease;
-        }
-
-        /* 文件管理样式 */
-        .cred-card {
-            background-color: #f8f9fa;
-            border: 1px solid #e1e4e8;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
+        /* Modern Cards */
+        .cred-card,
+        .file-item,
+        .card,
+        .config-group {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+            transition: all 0.2s;
             position: relative;
-            width: 100%;
-            box-sizing: border-box;
         }
 
-        .cred-card.disabled {
-            background-color: #f5f5f5;
-            border-color: #ccc;
-            opacity: 0.7;
+        .cred-card:hover,
+        .file-item:hover {
+            box-shadow: var(--shadow-md);
+            border-color: #d1d5db;
         }
 
-        .cred-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
-            gap: 20px;
-        }
-
-        .cred-filename {
-            font-family: monospace;
-            font-weight: bold;
-            color: #333;
-            font-size: 14px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            min-width: 300px;
-        }
-
-        .cred-status {
-            display: flex;
-            gap: 5px;
-        }
-
+        /* Status Badges */
         .status-badge {
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            color: white;
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .status-badge.enabled {
-            background-color: #28a745;
+            background: #d1fae5;
+            color: #065f46;
         }
 
         .status-badge.disabled {
-            background-color: #6c757d;
-        }
-
-        .error-codes {
-            background-color: #f8d7da;
-            color: #721c24;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
+            background: #f3f4f6;
+            color: #4b5563;
         }
 
         .cooldown-badge {
-            background-color: #ffc107;
-            color: #856404;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
         }
 
         .cooldown-badge.ready {
-            background-color: #28a745;
-            color: white;
+            background: #d1fae5;
+            color: #065f46;
         }
 
-        .model-cooldown-details {
-            background-color: #e3f2fd;
-            border: 1px solid #90caf9;
-            border-radius: 4px;
-            padding: 8px;
-            margin-top: 8px;
-            font-size: 11px;
-            color: #1976d2;
-        }
-
-        .model-cooldown-item {
-            display: inline-block;
-            background-color: #64b5f6;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin: 2px;
-            font-size: 10px;
-        }
-
-        .cred-actions {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-
+        /* Action Buttons within Cards */
         .cred-btn {
-            padding: 4px 12px;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            border-radius: 6px;
+            border: 1px solid transparent;
             cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .cred-btn.enable {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .cred-btn.disable {
-            background-color: #6c757d;
-            color: white;
+            font-weight: 500;
+            transition: all 0.15s;
+            margin-right: 0.5rem;
         }
 
         .cred-btn.delete {
-            background-color: #dc3545;
-            color: white;
+            background: #fee2e2;
+            color: #b91c1c;
         }
 
-        .cred-btn.download {
-            background-color: #007bff;
-            color: white;
+        .cred-btn.delete:hover {
+            background: #fecaca;
         }
 
         .cred-btn.view {
-            background-color: #17a2b8;
-            color: white;
+            background: #e0f2fe;
+            color: #0369a1;
         }
 
-        .cred-details {
-            margin-top: 10px;
-            display: none;
+        .cred-btn.view:hover {
+            background: #bae6fd;
         }
 
-        .cred-details.show {
-            display: block;
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .cred-content {
-            background-color: #f0f8ff;
-            border: 1px solid #b0d4ff;
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: #f1f5f9;
+        }
+
+        /* Tables (Logs, Keys) */
+        table th {
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        /* Alerts/Status */
+        .status {
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            border-left: 4px solid transparent;
+        }
+
+        .status.info {
+            background: #eff6ff;
+            border-left-color: #3b82f6;
+            color: #1e40af;
+        }
+
+        .status.success {
+            background: #ecfdf5;
+            border-left-color: #10b981;
+            color: #064e3b;
+        }
+
+        .status.error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+            color: #991b1b;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
             border-radius: 4px;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 11px;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 200px;
-            overflow-y: auto;
         }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Floating Toast */
+        #statusSection {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        #statusSection .status {
+            box-shadow: var(--shadow-lg);
+            min-width: 300px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+
 
         /* 额度信息显示样式 */
         .cred-quota-details {
@@ -1140,6 +923,17 @@
             gap: 10px;
             justify-content: flex-end;
         }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .login-form {
+            text-align: center;
+            padding: 4rem 2rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
     </style>
 </head>
 
@@ -1157,7 +951,8 @@
 
         <!-- 主界面 -->
         <div id="mainSection" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                     <h1 style="margin: 0;">GCLI2API 管理面板</h1>
                     <span id="versionInfo" style="font-size: 12px; color: #666;">
@@ -1179,9 +974,12 @@
                 <div class="tab-slider"></div>
                 <button class="tab active" onclick="switchTab('oauth')">OAuth认证</button>
                 <button class="tab" onclick="switchTab('antigravity')">Antigravity认证</button>
+                <button class="tab" onclick="switchTab('codex')">Codex认证</button>
                 <button class="tab" onclick="switchTab('upload')">批量上传</button>
                 <button class="tab" onclick="switchTab('manage')">GCLI凭证管理</button>
                 <button class="tab" onclick="switchTab('antigravity-manage')">Antigravity凭证管理</button>
+                <button class="tab" onclick="switchTab('codex-manage')">Codex凭证管理</button>
+                <button class="tab" onclick="switchTab('apikeys')">API Key管理</button>
                 <button class="tab" onclick="switchTab('config')">配置管理</button>
                 <button class="tab" onclick="switchTab('logs')">实时日志</button>
                 <button class="tab" onclick="switchTab('about')">项目信息</button>
@@ -1391,6 +1189,56 @@
                             <pre id="antigravityCredsContent"></pre>
                         </div>
                         <button class="btn" onclick="downloadAntigravityCredentials()">下载凭证文件</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Codex 认证标签页 -->
+            <div id="codexTab" class="tab-content">
+                <div class="status info" style="margin-bottom: 20px;">
+                    <strong>🤖 Codex 认证模式 (OpenAI ChatGPT)</strong>
+                    <p style="margin: 10px 0;">
+                        通过 OAuth 登录 ChatGPT 账号获取 Codex 凭证，用于访问 OpenAI GPT 模型。
+                    </p>
+                </div>
+
+                <button class="btn" id="getCodexAuthBtn" onclick="startCodexAuth()">获取 Codex 认证链接</button>
+
+                <div id="codexAuthUrlSection" class="hidden">
+                    <h3>Codex 认证链接：</h3>
+                    <div class="auth-url">
+                        <a id="codexAuthUrl" href="#" target="_blank">点击此链接进行 ChatGPT 登录</a>
+                    </div>
+                    <div class="status info">
+                        <strong>使用说明：</strong>
+                        <ol style="margin: 10px 0; padding-left: 20px;">
+                            <li>点击上方认证链接，在新窗口中登录 ChatGPT 账号</li>
+                            <li>授权成功后会跳转到 localhost:1455 显示成功页面</li>
+                            <li>复制浏览器地址栏的完整 URL</li>
+                            <li>粘贴到下方输入框，点击获取凭证完成流程</li>
+                        </ol>
+                    </div>
+
+                    <!-- 回调URL输入 -->
+                    <div class="form-group"
+                        style="margin: 20px 0; padding: 15px; border: 2px solid #e8f4fd; border-radius: 8px; background: #f8fcff;">
+                        <label style="font-weight: bold; color: #0066cc; margin-bottom: 10px; display: block;">
+                            📋 粘贴授权成功后的回调 URL：
+                        </label>
+                        <input type="url" id="codexCallbackUrlInput"
+                            placeholder="粘贴完整的回调URL，例如：http://localhost:1455/auth/callback?code=xxx&state=xxx"
+                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        <button class="btn" style="margin-top: 10px; background: #28a745; border-color: #28a745;"
+                            onclick="processCodexCallbackUrl()">
+                            从回调URL获取凭证
+                        </button>
+                    </div>
+                </div>
+
+                <div id="codexCredsSection" class="hidden">
+                    <h3>Codex 凭证信息：</h3>
+                    <div class="credentials">
+                        <pre id="codexCredsContent"></pre>
                     </div>
                 </div>
             </div>
@@ -1696,6 +1544,152 @@
                 </div>
             </div>
 
+            <!-- Codex 凭证管理标签页 -->
+            <div id="codex-manageTab" class="tab-content">
+                <h3>Codex 凭证文件管理</h3>
+                <p>管理所有 Codex (OpenAI ChatGPT) 认证文件</p>
+
+                <!-- API 信息和模型列表 -->
+                <div class="status info" style="margin-bottom: 20px;">
+                    <strong>🚀 Codex API 信息</strong>
+                    <div style="margin: 10px 0;">
+                        <strong>API 地址：</strong>
+                        <code
+                            style="background: #f1f3f4; padding: 2px 6px; border-radius: 3px;">/codex/v1/chat/completions</code>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <strong>支持的模型：</strong>
+                        <button class="refresh-btn" onclick="refreshCodexModels()"
+                            style="font-size: 12px; padding: 4px 8px; margin-left: 10px;">刷新模型列表</button>
+                        <div id="codexModelsContainer"
+                            style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                            <span style="color: #666; font-style: italic;">点击刷新加载模型列表...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 状态统计 -->
+                <div class="stats-container" id="codexStatsContainer">
+                    <div class="stat-item total">
+                        <span class="stat-number" id="codexStatTotal">0</span>
+                        <span class="stat-label">总计</span>
+                    </div>
+                    <div class="stat-item normal">
+                        <span class="stat-number" id="codexStatNormal">0</span>
+                        <span class="stat-label">正常</span>
+                    </div>
+                    <div class="stat-item disabled">
+                        <span class="stat-number" id="codexStatDisabled">0</span>
+                        <span class="stat-label">禁用</span>
+                    </div>
+                </div>
+
+                <div class="manage-actions">
+                    <button class="refresh-btn" onclick="refreshCodexCredsList()">刷新状态</button>
+                    <button class="download-all-btn" onclick="downloadAllCodexCreds()">打包下载所有文件</button>
+                </div>
+
+                <!-- 批量操作控件 -->
+                <div class="batch-controls">
+                    <h4 style="margin-top: 0; margin-bottom: 10px;">批量操作</h4>
+                    <div class="batch-actions">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="selectAllCodexCheckbox" class="select-all-checkbox"
+                                onchange="toggleSelectAllCodex()">
+                            <label for="selectAllCodexCheckbox">全选</label>
+                        </div>
+                        <span class="selected-count" id="codexSelectedCount">已选择 0 项</span>
+                        <button class="batch-btn batch-enable" id="codexBatchEnableBtn"
+                            onclick="batchCodexAction('enable')" disabled>批量启用</button>
+                        <button class="batch-btn batch-disable" id="codexBatchDisableBtn"
+                            onclick="batchCodexAction('disable')" disabled>批量禁用</button>
+                        <button class="batch-btn batch-delete" id="codexBatchDeleteBtn"
+                            onclick="batchCodexAction('delete')" disabled>批量删除</button>
+                    </div>
+                </div>
+
+                <!-- 筛选控件 -->
+                <div class="filter-container">
+                    <label for="codexStatusFilter">凭证状态：</label>
+                    <select id="codexStatusFilter" class="filter-select" onchange="applyCodexStatusFilter()">
+                        <option value="all">全部凭证</option>
+                        <option value="enabled">仅启用</option>
+                        <option value="disabled">仅禁用</option>
+                    </select>
+
+                    <label for="codexPageSizeSelect" style="margin-left: 20px;">每页显示：</label>
+                    <select id="codexPageSizeSelect" class="page-size-select" onchange="changeCodexPageSize()">
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+
+                <div id="codexCredsListSection">
+                    <div class="loading" id="codexCredsLoading">正在加载凭证文件...</div>
+                    <div id="codexCredsList"></div>
+
+                    <!-- 分页控件 -->
+                    <div class="pagination-container" id="codexPaginationContainer" style="display: none;">
+                        <button class="pagination-btn" id="codexPrevPageBtn" onclick="changeCodexPage(-1)">上一页</button>
+                        <div class="pagination-info" id="codexPaginationInfo">第 1 页，共 1 页</div>
+                        <button class="pagination-btn" id="codexNextPageBtn" onclick="changeCodexPage(1)">下一页</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Key 管理标签页 -->
+            <!-- API Key 管理标签页 -->
+            <div id="apikeysTab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2rem;">
+                    <div>
+                        <h3>API Key 管理</h3>
+                        <p style="color: var(--text-secondary); margin-top: 0.5rem;">管理 API 访问密钥用于接口鉴权</p>
+                    </div>
+                    <button class="btn" onclick="generateApiKey()"
+                        style="width: auto; background: var(--success-color);">
+                        ✨ 生成新密钥
+                    </button>
+                </div>
+
+                <!-- 信息卡片 -->
+                <div class="status info" style="display: flex; gap: 1rem; align-items: start;">
+                    <div style="font-size: 1.5rem;">💡</div>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 0.5rem;">使用说明</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">
+                            API Key 可替代密码进行认证，支持以下方式：
+                            <ul style="margin: 0.5rem 0; padding-left: 1.2rem;">
+                                <li>Header: <code>Authorization: Bearer &lt;key&gt;</code></li>
+                                <li>Header: <code>x-api-key: &lt;key&gt;</code></li>
+                                <li>Query Param: <code>?key=&lt;key&gt;</code></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 添加自定义区域 -->
+                <div class="card">
+                    <h4 style="margin-top: 0;">手动添加密钥</h4>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <div style="flex: 1; position: relative;">
+                            <input type="text" id="newApiKeyInput" placeholder="输入自定义 API Key (例如: sk-my-custom-key)"
+                                style="padding-left: 2.5rem;">
+                            <span
+                                style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">✏️</span>
+                        </div>
+                        <button class="btn" onclick="addApiKey()"
+                            style="width: auto; background: var(--primary-color);">添加</button>
+                        <button class="btn" onclick="loadApiKeys()"
+                            style="width: auto; background: var(--secondary-color); margin-left: auto;">🔄 刷新</button>
+                    </div>
+                </div>
+
+                <div id="apiKeysList">
+                    <div class="loading">正在加载密钥列表...</div>
+                </div>
+            </div>
+
             <!-- 配置管理标签页 -->
             <div id="configTab" class="tab-content">
                 <h3>配置管理</h3>
@@ -1898,11 +1892,12 @@
                                     <input type="checkbox" id="antigravityStream2nostream" class="config-checkbox" />
                                     Antigravity流式转非流式
                                 </label>
-                                <small class="config-note">启用后，非流式请求将使用流式API并收集为完整响应 <span
-                                        style="color: #28a745;">✓ 支持热更新</span></small>
+                                <small class="config-note">启用后，非流式请求将使用流式API并收集为完整响应 <span style="color: #28a745;">✓
+                                        支持热更新</span></small>
                                 <div class="config-info"
                                     style="background-color: #f3e5f5; border: 1px solid #9c27b0; color: #4a148c;">
-                                    <strong>🔄 说明：</strong>针对Antigravity模式的优化选项。启用后，即使客户端请求非流式响应，后端也会使用流式API获取数据并收集完整后再返回。
+                                    <strong>🔄
+                                        说明：</strong>针对Antigravity模式的优化选项。启用后，即使客户端请求非流式响应，后端也会使用流式API获取数据并收集完整后再返回。
                                     <br><strong>适用场景：</strong>某些情况下流式API比非流式API更稳定，启用此选项可以提高响应质量。
                                     <br><strong>默认：</strong>已启用
                                 </div>

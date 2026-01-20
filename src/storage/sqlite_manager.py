@@ -48,6 +48,17 @@ class SQLiteManager:
             ("call_count", "INTEGER DEFAULT 0"),
             ("created_at", "REAL DEFAULT (unixepoch())"),
             ("updated_at", "REAL DEFAULT (unixepoch())")
+        ],
+        "codex_credentials": [
+            ("disabled", "INTEGER DEFAULT 0"),
+            ("error_codes", "TEXT DEFAULT '[]'"),
+            ("last_success", "REAL"),
+            ("user_email", "TEXT"),
+            ("model_cooldowns", "TEXT DEFAULT '{}'"),
+            ("rotation_order", "INTEGER DEFAULT 0"),
+            ("call_count", "INTEGER DEFAULT 0"),
+            ("created_at", "REAL DEFAULT (unixepoch())"),
+            ("updated_at", "REAL DEFAULT (unixepoch())")
         ]
     }
 
@@ -214,6 +225,42 @@ class SQLiteManager:
             ON antigravity_credentials(rotation_order)
         """)
 
+        # Codex 凭证表
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS codex_credentials (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT UNIQUE NOT NULL,
+                credential_data TEXT NOT NULL,
+
+                -- 状态字段
+                disabled INTEGER DEFAULT 0,
+                error_codes TEXT DEFAULT '[]',
+                last_success REAL,
+                user_email TEXT,
+
+                -- 模型级 CD 支持 (JSON: {model_name: cooldown_timestamp})
+                model_cooldowns TEXT DEFAULT '{}',
+
+                -- 轮换相关
+                rotation_order INTEGER DEFAULT 0,
+                call_count INTEGER DEFAULT 0,
+
+                -- 时间戳
+                created_at REAL DEFAULT (unixepoch()),
+                updated_at REAL DEFAULT (unixepoch())
+            )
+        """)
+
+        # 创建索引 - Codex 凭证表
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_codex_disabled
+            ON codex_credentials(disabled)
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_codex_rotation_order
+            ON codex_credentials(rotation_order)
+        """)
+
         # 配置表
         await db.execute("""
             CREATE TABLE IF NOT EXISTS config (
@@ -262,10 +309,12 @@ class SQLiteManager:
         """根据 mode 获取对应的表名"""
         if mode == "antigravity":
             return "antigravity_credentials"
+        elif mode == "codex":
+            return "codex_credentials"
         elif mode == "geminicli":
             return "credentials"
         else:
-            raise ValueError(f"Invalid mode: {mode}. Must be 'geminicli' or 'antigravity'")
+            raise ValueError(f"Invalid mode: {mode}. Must be 'geminicli', 'antigravity' or 'codex'")
 
     # ============ SQL 方法 ============
 

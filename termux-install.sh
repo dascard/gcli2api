@@ -141,9 +141,10 @@ else
     cd ./gcli2api
 fi
 
-echo "强制同步项目代码，忽略本地修改..."
-git fetch --all
-git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
+echo "启动服务 (保留本地修改)..."
+# echo "强制同步项目代码，忽略本地修改..."
+# git fetch --all
+# git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
 
 # 只在不存在时创建
 if [ ! -d ".venv" ]; then

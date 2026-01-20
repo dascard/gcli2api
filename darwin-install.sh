@@ -37,8 +37,8 @@ else
     cd ./gcli2api
 fi
 
-# 拉取最新代码
-git pull
+# 拉取最新代码 (已禁用以保护本地修改)
+# git pull
 
 # 创建并同步虚拟环境
 uv sync

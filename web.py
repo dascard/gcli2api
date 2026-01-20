@@ -25,6 +25,7 @@ from src.router.geminicli.openai import router as openai_router
 from src.router.geminicli.gemini import router as gemini_router
 from src.router.geminicli.anthropic import router as geminicli_anthropic_router
 from src.router.geminicli.model_list import router as geminicli_model_list_router
+from src.router.codex.openai import router as codex_openai_router
 from src.task_manager import shutdown_all_tasks
 from src.web_routes import router as web_router
 
@@ -101,28 +102,31 @@ app.add_middleware(
 
 # 挂载路由器
 # OpenAI兼容路由 - 处理OpenAI格式请求
-app.include_router(openai_router, prefix="", tags=["OpenAI Compatible API"])
+# 导入聚合网关路由
+from src.router.unified.openai import router as unified_router
 
-# Gemini原生路由 - 处理Gemini格式请求
-app.include_router(gemini_router, prefix="", tags=["Gemini Native API"])
+# 1. 根路径聚合网关 (Unified Gateway)
+# 处理 /v1/models 和 /v1/chat/completions 的聚合与分发
+app.include_router(unified_router, prefix="", tags=["Unified Gateway"])
 
-# Geminicli模型列表路由 - 处理Gemini格式的模型列表请求
-app.include_router(geminicli_model_list_router, prefix="", tags=["Geminicli Model List"])
+# 2. Geminicli 独立端点 (Gemini Only)
+# 迁移到 /gemini 前缀
+app.include_router(openai_router, prefix="/gemini", tags=["Geminicli OpenAI API"])
+app.include_router(gemini_router, prefix="/gemini", tags=["Geminicli Vertex API"])
+app.include_router(geminicli_model_list_router, prefix="/gemini", tags=["Geminicli Model List"])
 
-# Antigravity路由 - 处理OpenAI格式请求并转换为Antigravity API
+# Geminicli Anthropic Messages 路由
+app.include_router(geminicli_anthropic_router, prefix="/gemini", tags=["Geminicli Anthropic Messages"])
+
+# 3. 其他独立端点
+# Codex 路由
+app.include_router(codex_openai_router, prefix="", tags=["Codex OpenAI API"])
+
+# Antigravity 路由
 app.include_router(antigravity_openai_router, prefix="", tags=["Antigravity OpenAI API"])
-
-# Antigravity路由 - 处理Gemini格式请求并转换为Antigravity API
 app.include_router(antigravity_gemini_router, prefix="", tags=["Antigravity Gemini API"])
-
-# Antigravity模型列表路由 - 处理Gemini格式的模型列表请求
 app.include_router(antigravity_model_list_router, prefix="", tags=["Antigravity Model List"])
-
-# Antigravity Anthropic Messages 路由 - Anthropic Messages 格式兼容
 app.include_router(antigravity_anthropic_router, prefix="", tags=["Antigravity Anthropic Messages"])
-
-# Geminicli Anthropic Messages 路由 - Anthropic Messages 格式兼容 (Geminicli)
-app.include_router(geminicli_anthropic_router, prefix="", tags=["Geminicli Anthropic Messages"])
 
 # Web路由 - 包含认证、凭证管理和控制面板功能
 app.include_router(web_router, prefix="", tags=["Web Interface"])
@@ -155,13 +159,17 @@ async def main():
     log.info(f"控制面板: http://127.0.0.1:{port}")
     log.info("=" * 60)
     log.info("API端点:")
-    log.info(f"   Geminicli (OpenAI格式): http://127.0.0.1:{port}/v1")
-    log.info(f"   Geminicli (Claude格式): http://127.0.0.1:{port}/v1")
-    log.info(f"   Geminicli (Gemini格式): http://127.0.0.1:{port}")
-    
-    log.info(f"   Antigravity (OpenAI格式): http://127.0.0.1:{port}/antigravity/v1")
-    log.info(f"   Antigravity (Claude格式): http://127.0.0.1:{port}/antigravity/v1")
-    log.info(f"   Antigravity (Gemini格式): http://127.0.0.1:{port}/antigravity")
+    log.info(f"   [Global] Unified (OpenAI格式 - 聚合): http://127.0.0.1:{port}/v1")
+    log.info("")
+    log.info(f"   [Gemini] OpenAI格式: http://127.0.0.1:{port}/gemini/v1")
+    log.info(f"   [Gemini] Claude格式: http://127.0.0.1:{port}/gemini/v1")
+    log.info(f"   [Gemini] Gemini格式: http://127.0.0.1:{port}/gemini")
+    log.info("")
+    log.info(f"   [Codex]  OpenAI格式: http://127.0.0.1:{port}/codex/v1")
+    log.info("")
+    log.info(f"   [Antigravity] OpenAI格式: http://127.0.0.1:{port}/antigravity/v1")
+    log.info(f"   [Antigravity] Claude格式: http://127.0.0.1:{port}/antigravity/v1")
+    log.info(f"   [Antigravity] Gemini格式: http://127.0.0.1:{port}/antigravity")
 
     # 配置hypercorn
     config = Config()

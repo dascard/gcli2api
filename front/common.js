@@ -15,9 +15,14 @@ const AppState = {
     antigravityAuthState: null,
     antigravityAuthInProgress: false,
 
+    // Codex认证
+    codexAuthState: null,
+    codexAuthInProgress: false,
+
     // 凭证管理
     creds: createCredsManager('normal'),
     antigravityCreds: createCredsManager('antigravity'),
+    codexCreds: createCredsManager('codex'),
 
     // 文件上传
     uploadFiles: createUploadManager('normal'),
@@ -44,7 +49,14 @@ const AppState = {
 // 凭证管理器工厂
 // =====================================================================
 function createCredsManager(type) {
-    const modeParam = type === 'antigravity' ? 'mode=antigravity' : 'mode=geminicli';
+    let modeParam;
+    if (type === 'antigravity') {
+        modeParam = 'mode=antigravity';
+    } else if (type === 'codex') {
+        modeParam = 'mode=codex';
+    } else {
+        modeParam = 'mode=geminicli';
+    }
 
     return {
         type: type,
@@ -84,8 +96,11 @@ function createCredsManager(type) {
         getElementId: (suffix) => {
             // 普通凭证的ID首字母小写,如 credsLoading
             // Antigravity的ID是 antigravity + 首字母大写,如 antigravityCredsLoading
+            // Codex的ID是 codex + 首字母大写,如 codexCredsLoading
             if (type === 'antigravity') {
                 return 'antigravity' + suffix.charAt(0).toUpperCase() + suffix.slice(1);
+            } else if (type === 'codex') {
+                return 'codex' + suffix.charAt(0).toUpperCase() + suffix.slice(1);
             }
             return suffix.charAt(0).toLowerCase() + suffix.slice(1);
         },
@@ -602,21 +617,42 @@ function createCredCard(credInfo, manager) {
     }
 
     // 路径ID
-    const pathId = (managerType === 'antigravity' ? 'ag_' : '') + btoa(encodeURIComponent(filename)).replace(/[+/=]/g, '_');
+    let pathIdPrefix = '';
+    if (managerType === 'antigravity') {
+        pathIdPrefix = 'ag_';
+    } else if (managerType === 'codex') {
+        pathIdPrefix = 'codex_';
+    }
+    const pathId = pathIdPrefix + btoa(encodeURIComponent(filename)).replace(/[+/=]/g, '_');
 
-    // 操作按钮
-    const actionButtons = `
-        ${status.disabled
-            ? `<button class="cred-btn enable" data-filename="${filename}" data-action="enable">启用</button>`
-            : `<button class="cred-btn disable" data-filename="${filename}" data-action="disable">禁用</button>`
-        }
-        <button class="cred-btn view" onclick="toggle${managerType === 'antigravity' ? 'Antigravity' : ''}CredDetails('${pathId}')">查看内容</button>
-        <button class="cred-btn download" onclick="download${managerType === 'antigravity' ? 'Antigravity' : ''}Cred('${filename}')">下载</button>
-        <button class="cred-btn email" onclick="fetch${managerType === 'antigravity' ? 'Antigravity' : ''}UserEmail('${filename}')">查看账号邮箱</button>
-        ${managerType === 'antigravity' ? `<button class="cred-btn" style="background-color: #17a2b8;" onclick="toggleAntigravityQuotaDetails('${pathId}')" title="查看该凭证的额度信息">查看额度</button>` : ''}
-        <button class="cred-btn" style="background-color: #ff9800;" onclick="verify${managerType === 'antigravity' ? 'Antigravity' : ''}ProjectId('${filename}')" title="重新获取Project ID，可恢复403错误">检验</button>
-        <button class="cred-btn delete" data-filename="${filename}" data-action="delete">删除</button>
-    `;
+    // 根据类型生成不同的操作按钮
+    let actionButtons = '';
+
+    if (managerType === 'codex') {
+        // Codex 专用按钮（移除检验、查看账号邮箱等 Google 特定功能）
+        actionButtons = `
+            ${status.disabled
+                ? `<button class="cred-btn enable" data-filename="${filename}" data-action="enable">启用</button>`
+                : `<button class="cred-btn disable" data-filename="${filename}" data-action="disable">禁用</button>`
+            }
+            <button class="cred-btn view" onclick="toggleCodexCredDetails('${pathId}')">查看内容</button>
+            <button class="cred-btn delete" data-filename="${filename}" data-action="delete">删除</button>
+        `;
+    } else {
+        // Geminicli / Antigravity 按钮
+        actionButtons = `
+            ${status.disabled
+                ? `<button class="cred-btn enable" data-filename="${filename}" data-action="enable">启用</button>`
+                : `<button class="cred-btn disable" data-filename="${filename}" data-action="disable">禁用</button>`
+            }
+            <button class="cred-btn view" onclick="toggle${managerType === 'antigravity' ? 'Antigravity' : ''}CredDetails('${pathId}')">查看内容</button>
+            <button class="cred-btn download" onclick="download${managerType === 'antigravity' ? 'Antigravity' : ''}Cred('${filename}')">下载</button>
+            <button class="cred-btn email" onclick="fetch${managerType === 'antigravity' ? 'Antigravity' : ''}UserEmail('${filename}')">查看账号邮箱</button>
+            ${managerType === 'antigravity' ? `<button class="cred-btn" style="background-color: #17a2b8;" onclick="toggleAntigravityQuotaDetails('${pathId}')" title="查看该凭证的额度信息">查看额度</button>` : ''}
+            <button class="cred-btn" style="background-color: #ff9800;" onclick="verify${managerType === 'antigravity' ? 'Antigravity' : ''}ProjectId('${filename}')" title="重新获取Project ID，可恢复403错误">检验</button>
+            <button class="cred-btn delete" data-filename="${filename}" data-action="delete">删除</button>
+        `;
+    }
 
     // 邮箱信息
     const emailInfo = credInfo.user_email
@@ -625,10 +661,18 @@ function createCredCard(credInfo, manager) {
 
     const checkboxClass = manager.getElementId('file-checkbox');
 
+    // 根据类型选择不同的选择函数名
+    let selectionFuncName = 'toggleFileSelection';
+    if (managerType === 'antigravity') {
+        selectionFuncName = 'toggleAntigravityFileSelection';
+    } else if (managerType === 'codex') {
+        selectionFuncName = 'toggleCodexFileSelection';
+    }
+
     div.innerHTML = `
         <div class="cred-header">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <input type="checkbox" class="${checkboxClass}" data-filename="${filename}" onchange="toggle${managerType === 'antigravity' ? 'Antigravity' : ''}FileSelection('${filename}')">
+                <input type="checkbox" class="${checkboxClass}" data-filename="${filename}" onchange="${selectionFuncName}('${filename}')">
                 <div>
                     <div class="cred-filename">${filename}</div>
                     ${emailInfo}
@@ -693,7 +737,12 @@ async function toggleCredDetailsCommon(pathId, manager) {
             contentDiv.textContent = '正在加载文件内容...';
 
             try {
-                const modeParam = manager.type === 'antigravity' ? 'mode=antigravity' : 'mode=geminicli';
+                let modeParam = 'mode=geminicli';
+                if (manager.type === 'antigravity') {
+                    modeParam = 'mode=antigravity';
+                } else if (manager.type === 'codex') {
+                    modeParam = 'mode=codex';
+                }
                 const endpoint = `./creds/detail/${encodeURIComponent(filename)}?${modeParam}`;
 
                 const response = await fetch(endpoint, { headers: getAuthHeaders() });
@@ -921,7 +970,12 @@ function switchTab(tabName) {
 function triggerTabDataLoad(tabName) {
     if (tabName === 'manage') AppState.creds.refresh();
     if (tabName === 'antigravity-manage') AppState.antigravityCreds.refresh();
+    if (tabName === 'codex-manage') {
+        AppState.codexCreds.refresh();
+        refreshCodexModels();  // 自动加载模型列表
+    }
     if (tabName === 'config') loadConfig();
+    if (tabName === 'apikeys') loadApiKeys();
     if (tabName === 'logs') connectWebSocket();
 }
 
@@ -1862,7 +1916,7 @@ async function deduplicateByEmail() {
             const msg = `去重完成：删除 ${data.deleted_count} 个重复凭证，保留 ${data.kept_count} 个凭证（${data.unique_emails_count} 个唯一邮箱）`;
             showStatus(msg, 'success');
             await AppState.creds.refresh();
-            
+
             // 显示详细信息
             if (data.duplicate_groups && data.duplicate_groups.length > 0) {
                 let details = '去重详情：\n\n';
@@ -1893,7 +1947,7 @@ async function deduplicateAntigravityByEmail() {
             const msg = `去重完成：删除 ${data.deleted_count} 个重复凭证，保留 ${data.kept_count} 个凭证（${data.unique_emails_count} 个唯一邮箱）`;
             showStatus(msg, 'success');
             await AppState.antigravityCreds.refresh();
-            
+
             // 显示详细信息
             if (data.duplicate_groups && data.duplicate_groups.length > 0) {
                 let details = '去重详情：\n\n';
@@ -2339,6 +2393,176 @@ function restoreOfficialUrls() {
 }
 
 // =====================================================================
+// API Key 管理函数
+// =====================================================================
+async function loadApiKeys() {
+    const listDiv = document.getElementById('apiKeysList');
+    listDiv.innerHTML = '<div class="loading">正在加载密钥列表...</div>';
+
+    try {
+        const response = await fetch('./config/apikeys', {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            renderApiKeys(data.keys, data.stored_keys);
+        } else {
+            listDiv.innerHTML = `<div class="status error">加载失败: ${data.detail || '未知错误'}</div>`;
+        }
+    } catch (error) {
+        listDiv.innerHTML = `<div class="status error">网络错误: ${error.message}</div>`;
+    }
+}
+
+function renderApiKeys(allKeys, storedKeys) {
+    const listDiv = document.getElementById('apiKeysList');
+    listDiv.innerHTML = '';
+
+    if (allKeys.length === 0) {
+        listDiv.innerHTML = `
+            <div class="upload-area" style="padding: 3rem; cursor: default;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔑</div>
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-weight: 500;">暂无有效 API Key</p>
+                <button class="btn" style="width: auto;" onclick="generateApiKey()">✨ 生成第一个密钥</button>
+            </div>
+        `;
+        return;
+    }
+
+    // Determine if we are on mobile (simple check)
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // Mobile View: Cards
+        allKeys.forEach(key => {
+            const isStored = storedKeys.includes(key);
+            const maskedKey = key.length > 12
+                ? `${key.substring(0, 8)}...${key.substring(key.length - 4)}`
+                : key;
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                    <div style="font-family: monospace; font-weight: 600; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.9em;">${maskedKey}</div>
+                    ${isStored
+                    ? '<span class="status-badge enabled">配置文件</span>'
+                    : '<span class="status-badge disabled">环境/启动参数</span>'}
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <button class="btn btn-small" style="flex: 1; background: var(--info-color);" onclick="navigator.clipboard.writeText('${key}').then(() => showStatus('复制成功', 'success'))">📋 复制</button>
+                     ${isStored
+                    ? `<button class="btn btn-small" style="flex: 1; background: var(--danger-color);" onclick="deleteApiKey('${key}')">🗑️ 删除</button>`
+                    : ''}
+                </div>
+            `;
+            listDiv.appendChild(card);
+        });
+    } else {
+        // Desktop View: Table
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse'; // Use collapse for cleaner look with bottom borders
+        table.innerHTML = `
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border-color);">
+                    <th style="padding: 1rem; text-align: left;">API Key</th>
+                    <th style="padding: 1rem; text-align: left;">来源</th>
+                    <th style="padding: 1rem; text-align: right;">操作</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+
+        allKeys.forEach(key => {
+            const isStored = storedKeys.includes(key);
+
+            // Source Badge
+            const sourceBadge = isStored
+                ? '<span class="status-badge enabled">配置文件</span>'
+                : '<span class="status-badge disabled">环境/启动参数</span>';
+
+            // Masked Key
+            const maskedKey = key.length > 12
+                ? `${key.substring(0, 8)}...${key.substring(key.length - 4)}`
+                : key;
+
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--border-color)';
+            tr.innerHTML = `
+                <td style="padding: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <code style="font-family: 'Roboto Mono', monospace; font-size: 0.95rem; background: #f3f4f6; padding: 0.4rem 0.8rem; border-radius: 6px; color: #374151;">${maskedKey}</code>
+                        <button onclick="navigator.clipboard.writeText('${key}').then(() => showStatus('复制成功', 'success'))" 
+                                class="cred-btn view" title="复制完整 Key">
+                            📋 复制
+                        </button>
+                    </div>
+                </td>
+                <td style="padding: 1rem;">${sourceBadge}</td>
+                <td style="padding: 1rem; text-align: right;">
+                    ${isStored
+                    ? `<button class="cred-btn delete" onclick="deleteApiKey('${key}')">🗑️ 删除</button>`
+                    : '<span style="color: #9ca3af; font-size: 0.85rem;" title="此 Key 由环境变量配置">🔒 锁定</span>'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        listDiv.appendChild(table);
+    }
+}
+
+async function manageApiKey(action, key = null) {
+    try {
+        const response = await fetch('./config/apikeys/action', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ action, key })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            showStatus(data.message, 'success');
+            if (action === 'generate') {
+                // 生成成功后弹窗提示
+                alert(`✅ 新生成的 API Key:\n\n${data.key}\n\n⚠️ 请妥善保存！`);
+            }
+            loadApiKeys();
+        } else {
+            showStatus(`操作失败: ${data.detail}`, 'error');
+        }
+    } catch (e) {
+        showStatus(`请求失败: ${e.message}`, 'error');
+    }
+}
+
+function addApiKey() {
+    const input = document.getElementById('newApiKeyInput');
+    const key = input.value.trim();
+    if (!key) {
+        showStatus('请输入 API Key', 'error');
+        return;
+    }
+    manageApiKey('add', key);
+    input.value = '';
+}
+
+function generateApiKey() {
+    if (confirm('确定要生成一个新的随机 API Key 吗？')) {
+        manageApiKey('generate');
+    }
+}
+
+function deleteApiKey(key) {
+    if (confirm('确定要删除此 API Key 吗？\n\n删除后使用此 Key 的客户端将无法访问！')) {
+        manageApiKey('delete', key);
+    }
+}
+
+// =====================================================================
 // 使用统计
 // =====================================================================
 async function refreshUsageStats() {
@@ -2670,3 +2894,212 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+// =====================================================================
+// Codex 认证和凭证管理函数
+// =====================================================================
+
+// 开始 Codex OAuth 认证
+async function startCodexAuth() {
+    const btn = document.getElementById('getCodexAuthBtn');
+    btn.disabled = true;
+    btn.textContent = '正在获取...';
+
+    try {
+        const response = await fetch('./auth/codex/start', {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            AppState.codexAuthState = data.state;
+            AppState.codexAuthInProgress = true;
+
+            document.getElementById('codexAuthUrl').href = data.auth_url;
+            document.getElementById('codexAuthUrl').textContent = '点击此链接完成 ChatGPT 登录';
+            document.getElementById('codexAuthUrlSection').classList.remove('hidden');
+
+            showStatus('请点击链接完成 ChatGPT 授权', 'success');
+        } else {
+            showStatus(`获取认证链接失败: ${data.detail || data.error || '未知错误'}`, 'error');
+        }
+    } catch (error) {
+        showStatus(`网络错误: ${error.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '获取 Codex 认证链接';
+    }
+}
+
+// 处理 Codex 回调 URL
+async function processCodexCallbackUrl() {
+    const urlInput = document.getElementById('codexCallbackUrlInput');
+    const callbackUrl = urlInput.value.trim();
+
+    if (!callbackUrl) {
+        showStatus('请输入回调 URL', 'error');
+        return;
+    }
+
+    // 解析 URL 获取 code 和 state
+    try {
+        const url = new URL(callbackUrl);
+        const code = url.searchParams.get('code');
+        const state = url.searchParams.get('state');
+
+        if (!code || !state) {
+            showStatus('回调 URL 格式不正确，缺少 code 或 state 参数', 'error');
+            return;
+        }
+
+        showStatus('正在处理认证...', 'info');
+
+        const response = await fetch('./auth/codex/callback', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ code, state })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            document.getElementById('codexCredsSection').classList.remove('hidden');
+            document.getElementById('codexCredsContent').textContent = JSON.stringify({
+                message: data.message,
+                email: data.email,
+                account_id: data.account_id,
+                filename: data.filename
+            }, null, 2);
+
+            showStatus(`Codex 认证成功！已保存为: ${data.filename}`, 'success');
+
+            // 清空输入
+            urlInput.value = '';
+        } else {
+            showStatus(`认证失败: ${data.detail || data.error || '未知错误'}`, 'error');
+        }
+    } catch (error) {
+        showStatus(`处理回调 URL 失败: ${error.message}`, 'error');
+    }
+}
+
+// Codex 凭证管理函数
+function refreshCodexCredsList() {
+    AppState.codexCreds.refresh();
+}
+
+function changeCodexPage(direction) {
+    AppState.codexCreds.changePage(direction);
+}
+
+function changeCodexPageSize() {
+    AppState.codexCreds.changePageSize();
+}
+
+function applyCodexStatusFilter() {
+    AppState.codexCreds.applyStatusFilter();
+}
+
+function toggleSelectAllCodex() {
+    const selectAllCheckbox = document.getElementById('selectAllCodexCheckbox');
+    const checkboxes = document.querySelectorAll('.codexFile-checkbox');
+
+    checkboxes.forEach(cb => {
+        const filename = cb.getAttribute('data-filename');
+        if (selectAllCheckbox.checked) {
+            AppState.codexCreds.selectedFiles.add(filename);
+        } else {
+            AppState.codexCreds.selectedFiles.delete(filename);
+        }
+    });
+
+    AppState.codexCreds.updateBatchControls();
+}
+
+function toggleCodexFileSelection(filename) {
+    if (AppState.codexCreds.selectedFiles.has(filename)) {
+        AppState.codexCreds.selectedFiles.delete(filename);
+    } else {
+        AppState.codexCreds.selectedFiles.add(filename);
+    }
+    AppState.codexCreds.updateBatchControls();
+}
+
+async function batchCodexAction(action) {
+    await AppState.codexCreds.batchAction(action);
+}
+
+async function downloadAllCodexCreds() {
+    try {
+        showStatus('正在打包下载...', 'info');
+        const response = await fetch('./creds/codex/download-all', {
+            headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'codex_credentials.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            showStatus('下载完成', 'success');
+        } else {
+            const data = await response.json();
+            showStatus(`下载失败: ${data.detail || data.error || '未知错误'}`, 'error');
+        }
+    } catch (error) {
+        showStatus(`下载失败: ${error.message}`, 'error');
+    }
+}
+
+async function toggleCodexCredDetails(pathId) {
+    await toggleCredDetailsCommon(pathId, AppState.codexCreds);
+}
+
+// 刷新 Codex 模型列表
+async function refreshCodexModels() {
+    const container = document.getElementById('codexModelsContainer');
+    if (!container) return;
+
+    container.innerHTML = '<span style="color: #666;">正在加载...</span>';
+
+    try {
+        const response = await fetch('./codex/v1/models', {
+            headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const models = data.data || [];
+
+            if (models.length === 0) {
+                container.innerHTML = '<span style="color: #999; font-style: italic;">暂无可用模型</span>';
+                return;
+            }
+
+            container.innerHTML = models.map(model => {
+                // 根据模型类型选择颜色
+                let bgColor = '#10a37f'; // GPT 默认绿色
+                if (model.id.startsWith('o1') || model.id.startsWith('o3')) {
+                    bgColor = '#6b5ce7'; // O 系列紫色
+                } else if (model.id.includes('gpt-5') || model.id.includes('codex')) {
+                    bgColor = '#ff6b35'; // GPT-5 / Codex 系列橙色
+                }
+                return `<span class="status-badge" style="background-color: ${bgColor}; color: white;">${model.id}</span>`;
+            }).join('');
+
+            showStatus(`已加载 ${models.length} 个模型`, 'success');
+        } else {
+            const data = await response.json();
+            container.innerHTML = `<span style="color: #e74c3c;">加载失败: ${data.detail || data.error || '未知错误'}</span>`;
+        }
+    } catch (error) {
+        container.innerHTML = `<span style="color: #e74c3c;">加载失败: ${error.message}</span>`;
+    }
+}
