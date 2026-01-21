@@ -142,23 +142,23 @@ def get_available_models(router_type: str = "openai") -> List[str]:
 
         search_suffix = "-search"
 
-            # 1. 单独的 thinking 后缀
-            for thinking_suffix in thinking_suffixes:
-                models.append(f"{base_model}{thinking_suffix}")
-                models.append(f"假流式/{base_model}{thinking_suffix}")
-                models.append(f"流式抗截断/{base_model}{thinking_suffix}")
+        # 1. 单独的 thinking 后缀
+        for thinking_suffix in thinking_suffixes:
+            models.append(f"{base_model}{thinking_suffix}")
+            models.append(f"假流式/{base_model}{thinking_suffix}")
+            models.append(f"流式抗截断/{base_model}{thinking_suffix}")
 
-            # 2. 单独的 search 后缀
-            models.append(f"{base_model}{search_suffix}")
-            models.append(f"假流式/{base_model}{search_suffix}")
-            models.append(f"流式抗截断/{base_model}{search_suffix}")
+        # 2. 单独的 search 后缀
+        models.append(f"{base_model}{search_suffix}")
+        models.append(f"假流式/{base_model}{search_suffix}")
+        models.append(f"流式抗截断/{base_model}{search_suffix}")
 
-            # 3. thinking + search 组合后缀
-            for thinking_suffix in thinking_suffixes:
-                combined_suffix = f"{thinking_suffix}{search_suffix}"
-                models.append(f"{base_model}{combined_suffix}")
-                models.append(f"假流式/{base_model}{combined_suffix}")
-                models.append(f"流式抗截断/{base_model}{combined_suffix}")
+        # 3. thinking + search 组合后缀
+        for thinking_suffix in thinking_suffixes:
+            combined_suffix = f"{thinking_suffix}{search_suffix}"
+            models.append(f"{base_model}{combined_suffix}")
+            models.append(f"假流式/{base_model}{combined_suffix}")
+            models.append(f"流式抗截断/{base_model}{combined_suffix}")
 
     # 对于 openai 或 codex 模式，添加 Codex 模型
     if router_type in ["openai", "codex"]:

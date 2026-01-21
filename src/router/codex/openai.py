@@ -144,12 +144,19 @@ async def chat_completions(
         )
 
     filename, credential_data = credential_result
+    log.info(f"[CODEX] Using credential: {filename}")
 
     # 刷新令牌（如果需要）
     credential_data = await refresh_codex_token_if_needed(filename, credential_data)
     access_token = credential_data.get("access_token")
+    
+    # 详细记录凭证状态
+    expiry = credential_data.get("expiry", "N/A")
+    account_id_log = credential_data.get("account_id", "N/A")
+    log.debug(f"[CODEX] Credential detail - expiry: {expiry}, account_id: {account_id_log}, token_len: {len(access_token) if access_token else 0}")
 
     if not access_token:
+        log.error(f"[CODEX] Credential {filename} has no access_token! Data keys: {list(credential_data.keys())}")
         raise HTTPException(
             status_code=503,
             detail="Codex credential has no access token."
@@ -476,10 +483,12 @@ async def chat_completions(
                     log.info(f"[CODEX] Streaming finished.")
 
             except Exception as e:
-                log.error(f"[CODEX] Stream error: {e}")
+                import traceback
+                log.error(f"[CODEX] Stream error: {type(e).__name__}: {e}")
+                log.error(f"[CODEX] Full traceback:\n{traceback.format_exc()}")
                 error_chunk = {
                     "error": {
-                        "message": str(e),
+                        "message": f"{type(e).__name__}: {e}",
                         "type": "server_error",
                         "code": 500
                     }
