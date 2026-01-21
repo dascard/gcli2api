@@ -298,6 +298,7 @@ async def chat_completions(
 
         # 转换为 OpenAI 格式
         import uuid
+        from fastapi import Response
         response_id = str(uuid.uuid4())
 
         # 直接迭代 process_stream() 生成器，并转换为 OpenAI 格式
@@ -305,8 +306,32 @@ async def chat_completions(
             if not chunk:
                 continue
 
+            # 检查是否是 Response 对象（错误情况）
+            if isinstance(chunk, Response):
+                # 将 Response 转换为 SSE 格式的错误消息
+                error_content = chunk.body if isinstance(chunk.body, bytes) else chunk.body.encode('utf-8')
+                try:
+                    gemini_error = json.loads(error_content.decode('utf-8'))
+                    # 转换为 OpenAI 格式错误
+                    from src.converter.openai2gemini import convert_gemini_to_openai_response
+                    openai_error = convert_gemini_to_openai_response(
+                        gemini_error,
+                        real_model,
+                        chunk.status_code
+                    )
+                    yield f"data: {json.dumps(openai_error)}\n\n".encode('utf-8')
+                except Exception:
+                    yield f"data: {json.dumps({'error': 'Stream error'})}\n\n".encode('utf-8')
+                yield "data: [DONE]\n\n".encode('utf-8')
+                return
+
             # 解析 Gemini SSE 格式
             chunk_str = chunk.decode('utf-8') if isinstance(chunk, bytes) else chunk
+
+            # 检查 chunk_str 是否是字符串类型（防御性编程）
+            if not isinstance(chunk_str, str):
+                log.warning(f"[ANTI_TRUNCATION] Unexpected chunk type: {type(chunk_str)}, skipping")
+                continue
 
             # 跳过空行
             if not chunk_str.strip():

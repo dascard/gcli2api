@@ -78,7 +78,7 @@ async def chat_completions(
     """
     智能路由分发：根据模型名称将请求转发到对应的后端
     """
-    from src.utils import get_base_model_from_feature_model
+    from src.utils import get_base_model_from_feature_model, BASE_MODELS
     
     # 获取基础模型名（剥离功能前缀）
     model_id = get_base_model_from_feature_model(request.model)
@@ -89,13 +89,29 @@ async def chat_completions(
         log.info(f"[Unified Gateway] Routing to Codex: {request.model} (Base: {model_id})")
         from src.router.codex.openai import chat_completions as handler
         return await handler(request, token)
-        
-    # 2. 检查是否为 Antigravity 模型 (简单判断：如果不是Gemini的基础模型，且不是Codex，尝试Antigravity?)
-    # 但由于Antigravity模型很多，且可能是动态的，这里先不强行路由到Antigravity，除非我们确定。
-    # 由于 Geminicli 的 router 是默认处理者，如果它处理不了会报错。
-    # 暂时默认所有非Codex请求都给 Geminicli 处理 (Antigravity 也有自己的独立端点，用户若用Unified，可能期望它能Work)
-    # 如果要支持 Antigravity，需要 import src.router.antigravity.openai and call it.
     
-    log.info(f"[Unified Gateway] Routing to Geminicli (Default): {model_id}")
-    from src.router.geminicli.openai import chat_completions as handler
+    # 2. 检查是否为 Geminicli 模型
+    # Geminicli 支持的模型：BASE_MODELS 及其带后缀的变体
+    # 后缀包括：思考预算后缀 (-max, -high, -medium, -low, -minimal) 和搜索后缀 (-search)
+    geminicli_base_prefixes = tuple(BASE_MODELS)  # gemini-2.5-pro, gemini-2.5-flash, gemini-3-pro-preview, gemini-3-flash-preview
+    
+    is_geminicli_model = False
+    for base in BASE_MODELS:
+        if model_id == base:
+            is_geminicli_model = True
+            break
+        # 检查是否是带后缀的变体（如 gemini-2.5-pro-max, gemini-3-flash-preview-search）
+        if model_id.startswith(base + "-"):
+            is_geminicli_model = True
+            break
+    
+    if is_geminicli_model:
+        log.info(f"[Unified Gateway] Routing to Geminicli: {request.model} (Base: {model_id})")
+        from src.router.geminicli.openai import chat_completions as handler
+        return await handler(request, token)
+    
+    # 3. 其他模型路由到 Antigravity（如 gemini-3-pro-high, gemini-3-flash 等）
+    log.info(f"[Unified Gateway] Routing to Antigravity: {request.model} (Base: {model_id})")
+    from src.router.antigravity.openai import chat_completions as handler
     return await handler(request, token)
+
